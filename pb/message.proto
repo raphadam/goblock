@@ -1,0 +1,49 @@
+syntax = "proto3";
+
+option go_package = "github.com/raphadam/goblock/pb";
+
+service Node {
+  rpc Handshake (Info) returns (Info);
+  rpc SubmitTransaction (Transaction) returns (Ok);
+  rpc SubmitBlock (Block) returns (Ok);
+}
+
+message Info {
+  uint32 version = 1;
+  uint32 height = 2;
+  string listen_addr = 3;
+  repeated string peers = 4;
+}
+
+message BlockHeader {
+  uint32 version = 1;
+  uint32 height = 2; 
+  bytes prev_hash = 3;
+  uint32 nonce = 4;
+  uint32 difficulty = 5;
+  bytes merkle_root = 6;
+  int64 timestamp = 7;
+}
+
+message Block {
+  BlockHeader header = 1;
+  repeated Transaction transactions = 2;
+  bytes miner_key = 3;
+  bytes signature = 4;
+}
+
+message TransactionHeader {
+  uint32 version = 1;
+  bytes sender = 2;
+  bytes receiver = 3;
+  float amount = 4;
+  int64 timestamp = 5;
+}
+
+message Transaction {
+  TransactionHeader header = 1;
+  bytes signature = 2;
+}
+
+message Ok {
+}
