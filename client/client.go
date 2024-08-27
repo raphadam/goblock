@@ -64,8 +64,6 @@ func New(ctx context.Context, addr string) {
 			if err != nil {
 				log.Fatalf("unable to send transaction %v", err)
 			}
-
-			log.Println("transaction sent")
 		}
 	}
 }

@@ -89,7 +89,7 @@ func (bc *chain) add(block *pb.Block) error {
 	}
 
 	bc.chain = append(bc.chain, block)
-	log.Println("chain height", len(bc.chain), hex.EncodeToString(block.MinerKey))
+	// log.Println("chain height", len(bc.chain), hex.EncodeToString(block.MinerKey))
 
 	return nil
 }
@@ -361,7 +361,7 @@ func (n *Node) SubmitTransaction(ctx context.Context, t *pb.Transaction) (*pb.Ok
 func (n *Node) SubmitBlock(ctx context.Context, b *pb.Block) (*pb.Ok, error) {
 	err := n.chain.add(b)
 	if err != nil {
-		log.Println(n.listenAddr, "error adding to chain", err)
+		// log.Println(n.listenAddr, "error adding to chain", err)
 		return nil, err
 	}
 
@@ -388,11 +388,13 @@ func (n *Node) Start(ctx context.Context) {
 			ts := n.pool.get()
 			previous := n.chain.getLastBlock()
 
-			b, err := mineBlock(ts, previous, pub, priv)
+			b, err := MineBlock(ts, previous, pub, priv)
 			if err != nil {
-				log.Println("failed creating block")
+				log.Println("something wrong happened", err)
 				break
 			}
+
+			LogBlock(b)
 
 			// TODO: check if valid at this time
 			err = n.chain.add(b)
@@ -401,41 +403,7 @@ func (n *Node) Start(ctx context.Context) {
 				break
 			}
 
-			log.Println(n.listenAddr, "successfull add itself", err)
 			n.peerList.broadcastBlock(b)
 		}
 	}
-}
-
-func mineBlock(ts []*pb.Transaction, previous *pb.Block, pub ed25519.PublicKey, priv ed25519.PrivateKey) (*pb.Block, error) {
-	// TODO: verify the hashes
-
-	// TODO: should create an empty block and give to the miner
-	if len(ts) == 0 {
-		return nil, fmt.Errorf("empty block")
-	}
-
-	merkle := ComputeMerkleRoot(ts)
-
-	header := &pb.BlockHeader{
-		Version:    VERSION,
-		Height:     previous.Header.Height + 1,
-		PrevHash:   HashBlockHeader(previous.Header),
-		Timestamp:  time.Now().UnixNano(),
-		Difficulty: DIFFICULTY,
-		Nonce:      0,
-		MerkleRoot: merkle,
-	}
-	header.Nonce = ComputeNonce(header)
-
-	sign := SignBlockHeader(priv, header)
-
-	newBlock := &pb.Block{
-		Header:       header,
-		Transactions: ts,
-		MinerKey:     pub,
-		Signature:    sign,
-	}
-
-	return newBlock, nil
 }

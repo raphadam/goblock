@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"crypto/ed25519"
 	"crypto/sha256"
+	"encoding/hex"
 	"log"
+	"time"
 
 	"github.com/raphadam/goblock/pb"
 	"google.golang.org/grpc"
@@ -107,4 +109,51 @@ func SignBlockHeader(pk ed25519.PrivateKey, header *pb.BlockHeader) []byte {
 	}
 
 	return sign
+}
+
+func MineBlock(ts []*pb.Transaction, previous *pb.Block, pub ed25519.PublicKey, priv ed25519.PrivateKey) (*pb.Block, error) {
+	// TODO: verify the hashes
+
+	// TODO: should create an empty block and give to the miner
+	if len(ts) == 0 {
+		ts = append(ts, &pb.Transaction{
+			Header:    &pb.TransactionHeader{},
+			Signature: []byte("miner addr"),
+		})
+		// return nil, fmt.Errorf("empty block")
+	}
+
+	merkle := ComputeMerkleRoot(ts)
+
+	header := &pb.BlockHeader{
+		Version:    VERSION,
+		Height:     previous.Header.Height + 1,
+		PrevHash:   HashBlockHeader(previous.Header),
+		Timestamp:  time.Now().UnixNano(),
+		Difficulty: DIFFICULTY,
+		Nonce:      0,
+		MerkleRoot: merkle,
+	}
+	header.Nonce = ComputeNonce(header)
+
+	sign := SignBlockHeader(priv, header)
+
+	newBlock := &pb.Block{
+		Header:       header,
+		Transactions: ts,
+		MinerKey:     pub,
+		Signature:    sign,
+	}
+
+	return newBlock, nil
+}
+
+func LogBlock(b *pb.Block) {
+	log.Printf("Block")
+	log.Printf("Height:\t%d", b.Header.Height)
+	log.Printf("Nonce:\t%d", b.Header.Nonce)
+	log.Printf("MerkleRoot:\t%s", hex.EncodeToString(b.Header.MerkleRoot))
+	log.Printf("PrevHash:\t%s", hex.EncodeToString(b.Header.PrevHash))
+	log.Printf("CurrHash:\t%s", hex.EncodeToString(HashBlockHeader(b.Header)))
+	log.Println("-------------------------------")
 }
